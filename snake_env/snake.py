@@ -11,6 +11,7 @@ for the Snake AI implementation.
 
 import random
 import numpy as np
+import bouncing_fruit
 
 
 class Snake:
@@ -31,8 +32,10 @@ class Snake:
     SCREEN_HEIGHT = 300  #!< Height of game screen in pixels
     SNAKE_BLOCK = 10     #!< Size of each snake/food block in pixels
     SNAKE_SPEED = 15     #!< Game update frequency (moves per second)
+    BOUNCING_FRUIT_SPEED = 0.25
+    EATING_RANGE = 0.8
 
-    def __init__(self):
+    def __init__(self, moving_fruit = False):
         """! Initialize a new Snake game instance.
         
         Sets up the initial game state with:
@@ -42,6 +45,7 @@ class Snake:
         - No initial movement
         """
         # Game state flags
+        self.moving_fruit = moving_fruit
         self.game_over = False  #!< Tracks if game has ended due to collision
         self.is_eating = False  #!< Tracks if snake is currently eating food
         
@@ -67,6 +71,13 @@ class Snake:
         This is called each game tick before collision detection.
         """
         self.position += self.displacement
+        
+    def generate_bouncing_velocity(self):
+        v = np.array([round(random.randint(-1, 1) * self.SNAKE_BLOCK),
+                round(random.randint(-1, 1) * self.SNAKE_BLOCK)])
+        if v[0] == 0 and v[1] == 0: # keep trying till we get non 0, 0 velocity
+            return self.generate_bouncing_velocity()
+        return v
 
     def check_collisions(self):
         """! Check for game-ending collisions.
@@ -116,6 +127,11 @@ class Snake:
             round(random.randrange(0, self.SCREEN_WIDTH - self.SNAKE_BLOCK) / 10.0) * 10.0,
             round(random.randrange(0, self.SCREEN_HEIGHT - self.SNAKE_BLOCK) / 10.0) * 10.0
         ))
+        
+        self.food_velocity = np.array([0,0])
+        if self.moving_fruit:
+            self.food_velocity = self.generate_bouncing_velocity() * self.BOUNCING_FRUIT_SPEED
+        self.bouncing_fruit = bouncing_fruit.Bouncing_Fruit(self.food_position, self.food_velocity)
 
     def eat_food(self):
         """! Check for food consumption and handle growth.
@@ -126,7 +142,7 @@ class Snake:
         3. Generates new food position after consumption
         4. Updates is_eating flag for reward calculation
         """
-        self.is_eating = np.array_equal(self.position, self.food_position)
+        self.is_eating = np.allclose(self.position, self.food_position, atol = self.SNAKE_BLOCK * self.EATING_RANGE)
         if self.is_eating:
             self.snake_length += 1
             self.create_food()
@@ -143,6 +159,7 @@ class Snake:
         This method should be called once per game tick/frame.
         """
         self.update_snake_position()  # Move snake head
+        self.bouncing_fruit.update(self)
         self.check_collisions()       # Check for game-ending conditions
         self.update_snake_list()      # Update body positions
         self.eat_food()               # Handle food interactions

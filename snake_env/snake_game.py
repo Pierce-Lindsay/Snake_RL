@@ -41,7 +41,7 @@ class SnakeGame(snake.Snake):
     - Game loop management
     """
 
-    def __init__(self, render=None):
+    def __init__(self, render=None, bouncing = False):
         """! Initialize the graphical Snake game instance.
         
         Sets up:
@@ -52,7 +52,7 @@ class SnakeGame(snake.Snake):
         
         @param render Optional parameter for rendering configuration (unused)
         """
-        super().__init__()
+        super().__init__(moving_fruit=bouncing)
         self.display = pygame.display.set_mode((self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
         self.clock = pygame.time.Clock()
         self.close_window = False    #!< Flag to control game window closure
@@ -176,7 +176,10 @@ class SnakeGame(snake.Snake):
         pygame.quit()
         quit()
 
+class Bouncing_Snake_Game(SnakeGame):
+    def __init__(self):
+        super().__init__(bouncing=True)
 
 if __name__ == "__main__":
-    game = SnakeGame()
+    game = Bouncing_Snake_Game()
     game.play()
