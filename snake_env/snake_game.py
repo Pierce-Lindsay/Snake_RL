@@ -57,6 +57,7 @@ class SnakeGame(snake.Snake):
         self.clock = pygame.time.Clock()
         self.close_window = False    #!< Flag to control game window closure
         self.key_buffer = deque()    #!< Buffer for keyboard input processing
+        self.fruit_font = pygame.font.SysFont("bahnschrift", 16)
 
     def display_score(self, score):
         """! Render the current score on screen.
@@ -164,9 +165,12 @@ class SnakeGame(snake.Snake):
 
             # Render game state
             self.display.fill(BLUE)
-            pygame.draw.rect(self.display, RED, 
-                           [self.food_position[0], self.food_position[1], 
-                            self.SNAKE_BLOCK, self.SNAKE_BLOCK])
+            for number, position in enumerate(self.fruit_positions, start=1):
+                pygame.draw.rect(
+                    self.display, RED,
+                    [position[0], position[1], self.SNAKE_BLOCK, self.SNAKE_BLOCK])
+                label = self.fruit_font.render(str(number), True, WHITE)
+                self.display.blit(label, [position[0] + 1, position[1] - 2])
             self.draw_snake()
             self.display_score(self.snake_length - 1)
             

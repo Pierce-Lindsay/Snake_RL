@@ -58,6 +58,12 @@ Controls:
 - Q: Quit game
 - C: Restart after game over
 
+### Numbered fruit mode
+
+The game displays five fruits numbered 1-5. Eating fruit 1 grows the snake,
+shifts fruits 2-5 down by one number, and places a new fruit 5 at a free grid
+position. Fruits numbered 2-5 are obstacles; touching one ends the game.
+
 ### Training an AI Agent
 
 ```bash

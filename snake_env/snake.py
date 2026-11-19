@@ -56,8 +56,8 @@ class Snake:
         ])  #!< Current position of snake head
         self.displacement = np.zeros(2,)  #!< Current movement vector
         
-        # Initialize food
-        self.create_food()  # Place first food item
+        # Initialize the numbered fruits
+        self.create_food()
 
     def update_snake_position(self):
         """! Update snake head position based on current displacement.
@@ -71,9 +71,10 @@ class Snake:
     def check_collisions(self):
         """! Check for game-ending collisions.
         
-        Detects two types of collisions:
+        Detects collisions with:
         1. Wall collisions: Snake head touches screen boundaries
         2. Self collisions: Snake head touches any part of its body
+        3. Fruits numbered 2-5, which act as obstacles
         
         Sets game_over flag to True if any collision is detected.
         """
@@ -91,6 +92,12 @@ class Snake:
                 self.game_over = True
                 print("Game over: Own body crash")
 
+        for fruit_position in self.fruit_positions[1:]:
+            if np.array_equal(self.position, fruit_position):
+                self.game_over = True
+                print("Game over: Hit a fruit numbered 2-5")
+                break
+
     def update_snake_list(self):
         """! Update the list of snake body segments.
         
@@ -105,31 +112,66 @@ class Snake:
             del self.snake_list[0]
 
     def create_food(self):
-        """! Generate new food at random position.
+        """! Generate five numbered fruits at random, unoccupied positions.
         
         Places food randomly on screen with constraints:
         - Aligns to SNAKE_BLOCK grid
         - Keeps full blocks within screen boundaries
-        - Uses integer division and multiplication to ensure proper alignment
+        - Avoids the snake and other fruits
         """
-        self.food_position = np.array((
-            round(random.randrange(0, self.SCREEN_WIDTH - self.SNAKE_BLOCK) / 10.0) * 10.0,
-            round(random.randrange(0, self.SCREEN_HEIGHT - self.SNAKE_BLOCK) / 10.0) * 10.0
-        ))
+        self.fruit_positions = []
+        for _ in range(5):
+            position = self._random_empty_position()
+            if position is None:
+                self.game_over = True
+                break
+            self.fruit_positions.append(position)
+
+        self.food_position = self.fruit_positions[0] if self.fruit_positions else None
+
+    def _random_empty_position(self):
+        """! Return a random grid position not occupied by the snake or a fruit."""
+        occupied = {
+            tuple(segment) for segment in self.snake_list
+        }
+        occupied.add(tuple(self.position))
+        occupied.update(tuple(position) for position in self.fruit_positions)
+
+        available = [
+            (x, y)
+            for x in range(0, self.SCREEN_WIDTH, self.SNAKE_BLOCK)
+            for y in range(0, self.SCREEN_HEIGHT, self.SNAKE_BLOCK)
+            if (x, y) not in occupied
+        ]
+        if not available:
+            return None
+
+        return np.array(random.choice(available), dtype=float)
 
     def eat_food(self):
         """! Check for food consumption and handle growth.
         
         Performs these operations:
-        1. Checks if snake head overlaps with food position
-        2. Increases snake length if food is eaten
-        3. Generates new food position after consumption
+        1. Checks if snake head overlaps with fruit 1
+        2. Increases snake length if fruit 1 is eaten
+        3. Shifts fruits 2-5 down and generates a new fruit 5
         4. Updates is_eating flag for reward calculation
         """
+        if self.game_over:
+            self.is_eating = False
+            return
+
         self.is_eating = np.array_equal(self.position, self.food_position)
         if self.is_eating:
             self.snake_length += 1
-            self.create_food()
+            self.fruit_positions = self.fruit_positions[1:]
+            new_fruit = self._random_empty_position()
+            if new_fruit is None:
+                self.game_over = True
+                print("Game over: No space for a new fruit")
+            else:
+                self.fruit_positions.append(new_fruit)
+            self.food_position = self.fruit_positions[0]
 
     def process(self):
         """! Process one complete game tick.

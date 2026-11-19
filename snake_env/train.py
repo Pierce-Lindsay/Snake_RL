@@ -181,7 +181,13 @@ class SnakeAI(snake.Snake):
             return True
 
         # Check self collision
-        return any(np.array_equal(test_pos, segment) for segment in self.snake_list[:-1])
+        if any(np.array_equal(test_pos, segment) for segment in self.snake_list[:-1]):
+            return True
+
+        return any(
+            np.array_equal(test_pos, position)
+            for position in self.fruit_positions[1:]
+        )
 
     def choose_action(self, state):
         """! Select action using epsilon-greedy strategy.
@@ -317,6 +323,7 @@ class SnakeAI(snake.Snake):
             return self.algo_settings.death_penalty
         
         if self.is_eating:
+            self.food_distance = food_distance
             return self.algo_settings.food_reward
                 
         # Calculate reward based on whether snake moved closer to or further from food
@@ -380,6 +387,8 @@ class SnakeAI(snake.Snake):
         BLACK = (0, 0, 0)        #!< Color for snake body and score
         RED = (213, 50, 80)      #!< Color for food
         BLUE = (50, 153, 213)    #!< Color for background
+        WHITE = (255, 255, 255)
+        fruit_font = pygame.font.SysFont("bahnschrift", 16)
 
         def display_score(score, mode):
             """! Helper function to display the current score.
@@ -406,10 +415,12 @@ class SnakeAI(snake.Snake):
 
         # Update display
         mode.fill(BLUE)
-        pygame.draw.rect(mode, RED, [
-            self.food_position[0], self.food_position[1], self.SNAKE_BLOCK,
-            self.SNAKE_BLOCK
-        ])
+        for number, position in enumerate(self.fruit_positions, start=1):
+            pygame.draw.rect(mode, RED, [
+                position[0], position[1], self.SNAKE_BLOCK, self.SNAKE_BLOCK
+            ])
+            label = fruit_font.render(str(number), True, WHITE)
+            mode.blit(label, [position[0] + 1, position[1] - 2])
         draw_snake(mode)
         display_score(self.snake_length - 1, mode)
         pygame.display.update()
