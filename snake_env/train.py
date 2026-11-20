@@ -16,7 +16,7 @@ import argparse
 import cv2
 from datetime import datetime
 import json
-import Snake_RL.snake_env.snake as snake
+import snake as snake
 
 class SnakeAI(snake.Snake):
     """! @brief AI agent that learns to play Snake using Q-learning.
@@ -61,13 +61,12 @@ class SnakeAI(snake.Snake):
     def reset(self):
         """! Reset the game state and learning parameters."""
         super().__init__()
-
+        self.displacement = np.array([0, -self.SNAKE_BLOCK])
+        self.snake_list =[self.position.copy()]
         # Reset reward tracking
         self.food_distance = self.compute_food_distance()
         self.cumul_reward = 0
         self.last_action = "epsilon"
-
-        self.displacement = np.array([0, -self.SNAKE_BLOCK])
 
     def compute_food_distance(self):
         """! Calculate Euclidean distance to food.
@@ -131,6 +130,35 @@ class SnakeAI(snake.Snake):
             self._display_state_info(food_bits, danger_bits)
 
         return (food_bits, danger_bits)
+
+    def make_board(self):
+        board = np.zeros((7,int(self.SCREEN_HEIGHT/self.SNAKE_BLOCK),int(self.SCREEN_WIDTH/self.SNAKE_BLOCK)),dtype=np.float32)
+        #Body
+        for body in self.snake_list[:-1]:
+            x = int(body[0]//self.SNAKE_BLOCK)
+            y = int(body[1]//self.SNAKE_BLOCK)
+            board[0,y,x] = 1.0
+        #Head
+        x = int(self.position[0]//self.SNAKE_BLOCK)
+        y = int(self.position[1]//self.SNAKE_BLOCK)
+        board[1,y,x] = 1.0
+        #Food
+        x = int(self.food_position[0]//self.SNAKE_BLOCK)
+        y = int(self.food_position[1]//self.SNAKE_BLOCK)
+        board[2,y,x] = 1.0
+        #up
+        if self.displacement[1] < 0:
+            board[3,:,:] = 1.0
+        #down
+        elif self.displacement[1] > 0:
+            board[4,:,:] =1.0
+        #left
+        elif self.displacement[0] < 0:
+            board[5,:,:] = 1.0
+        #right
+        elif self.displacement[0] > 0:
+            board[6,:,:] =1.0   
+        return board
 
     def _display_state_info(self, food_bits, danger_bits):
         """! Helper method to display state information.
