@@ -28,6 +28,7 @@ BLACK = (0, 0, 0)          #!< Color for snake body and text
 RED = (213, 50, 80)        #!< Color for food and game over message
 GREEN = (0, 255, 0)        #!< Unused but available for customization
 BLUE = (50, 153, 213)      #!< Color for background
+GRAY = (128, 128, 128)     #!< Dynamic walls
 
 
 class SnakeGame(snake.Snake):
@@ -67,6 +68,16 @@ class SnakeGame(snake.Snake):
         """
         value = FONT_STYLE.render("Your Score: " + str(score), True, BLACK)
         self.display.blit(value, [0, 0])
+
+    def draw_walls(self):
+        """!Draw all active dynamic walls."""
+
+        for wall in self.walls:
+            pygame.draw.rect(
+                self.display,
+                GRAY,
+                [wall[0], wall[1], self.SNAKE_BLOCK, self.SNAKE_BLOCK]
+            )
 
     def draw_snake(self):
         """! Render the snake on screen.
@@ -167,6 +178,7 @@ class SnakeGame(snake.Snake):
             pygame.draw.rect(self.display, RED, 
                            [self.food_position[0], self.food_position[1], 
                             self.SNAKE_BLOCK, self.SNAKE_BLOCK])
+            self.draw_walls()
             self.draw_snake()
             self.display_score(self.snake_length - 1)
             

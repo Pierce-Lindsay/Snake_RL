@@ -48,6 +48,8 @@ class Snake:
         # Snake properties
         self.snake_list = []    #!< List of coordinates for each snake segment
         self.snake_length = 1   #!< Current length of the snake
+        self.walls = []
+        self.max_walls = 3
         
         # Position and movement
         self.position = np.array([
@@ -91,6 +93,13 @@ class Snake:
                 self.game_over = True
                 print("Game over: Own body crash")
 
+        # Check dynamic wall collisions
+        for wall in self.walls:
+            if np.array_equal(self.position, wall):
+                self.game_over = True
+                print("Game over: Dynamic wall collision")
+                break
+
     def update_snake_list(self):
         """! Update the list of snake body segments.
         
@@ -104,18 +113,59 @@ class Snake:
         if len(self.snake_list) > self.snake_length:
             del self.snake_list[0]
 
+    def create_wall(self):
+        """Create a random wall and remove the oldest when needed"""
+
+        available_positions = []
+
+        for x in range(0, self.SCREEN_WIDTH, self. SNAKE_BLOCK):
+            for y in range(0,self.SCREEN_HEIGHT, self.SNAKE_BLOCK):
+                position = [x,y]
+
+                # avoid snake, food, and eixisting walls
+                if (not np.array_equal(position, self.position)
+                    and not any(np.array_equal(position, segment)
+                                for segment in self.snake_list)
+                    and not np.array_equal(position, self.food_position)
+                    and position not in self.walls):
+
+                    available_positions.append(position)
+        
+        # Remove oldest wall if maximum reached
+        if len(self.walls) >= self.max_walls:
+            self.walls.pop(0)
+
+        # Add a new wall at a random available position
+        if available_positions:
+            new_wall = random.choice(available_positions)
+            self.walls.append(new_wall)
+
+
     def create_food(self):
         """! Generate new food at random position.
-        
-        Places food randomly on screen with constraints:
-        - Aligns to SNAKE_BLOCK grid
-        - Keeps full blocks within screen boundaries
-        - Uses integer division and multiplication to ensure proper alignment
         """
-        self.food_position = np.array((
-            round(random.randrange(0, self.SCREEN_WIDTH - self.SNAKE_BLOCK) / 10.0) * 10.0,
-            round(random.randrange(0, self.SCREEN_HEIGHT - self.SNAKE_BLOCK) / 10.0) * 10.0
-        ))
+        available_positions = []
+
+        for x in range(0, self.SCREEN_WIDTH, self.SNAKE_BLOCK):
+            for y in range(0, self.SCREEN_HEIGHT, self.SNAKE_BLOCK):
+                position = [x, y]
+
+                # Avoid snake head, body, and dynamic walls
+                if (not np.array_equal(position, self.position)
+                    and not any(np.array_equal(position, segment)
+                                for segment in self.snake_list)
+                    and position not in self.walls):
+
+                    available_positions.append(position)
+
+        if available_positions:
+            self.food_position = np.array(
+                random.choice(available_positions)
+            )
+        else:
+            # No available space remaining
+            self.food_position = None
+            self.game_over = True
 
     def eat_food(self):
         """! Check for food consumption and handle growth.
@@ -130,6 +180,7 @@ class Snake:
         if self.is_eating:
             self.snake_length += 1
             self.create_food()
+            self.create_wall()
 
     def process(self):
         """! Process one complete game tick.
