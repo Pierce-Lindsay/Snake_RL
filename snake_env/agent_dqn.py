@@ -38,7 +38,7 @@ class Agent_DQN(SnakeAI):
         """
 
         super().__init__()
-        self.num_episodes = 2500
+        self.num_episodes = 10000
         self.gamma = 0.99
         self.lr = 1.5e-4
         self.batch_size = 32
@@ -57,11 +57,11 @@ class Agent_DQN(SnakeAI):
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         # self.writer = SummaryWriter("runs/10k/")
         
-        # if args.test_dqn:
-        #     #you can load your model here
-        #     print('loading trained model')
-        #     self.model.load_state_dict(torch.load("model.pth",map_location = self.device))
-        #     self.model.eval()
+        if args.test:
+            #you can load your model here
+            print('loading trained model')
+            self.model.load_state_dict(torch.load("model-5000.pth",map_location = self.device))
+            self.model.eval()
 
     def init_game_setting(self):
         """
@@ -124,7 +124,7 @@ class Agent_DQN(SnakeAI):
 
         plt.title("Training")
         fig.tight_layout()
-        fig.savefig("Reward.png")
+        fig.savefig("Reward-10000.png")
 
 
     def train(self):
@@ -211,7 +211,7 @@ class Agent_DQN(SnakeAI):
                 f"Epsilon: {self.epsilon:.3f}"
                 )
         torch.save(self.model.state_dict(), "model.pth")
-        print("Model saved to model.pth")
+        print("Model saved to model-10000.pth")
         # self.writer.close()
         self.make_plots(total_rewards, epsilon_values)
-        print("Plot saved to Reward.png")
+        print("Plot saved to Reward-10000.png")

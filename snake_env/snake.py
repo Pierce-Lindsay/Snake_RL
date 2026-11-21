@@ -83,13 +83,13 @@ class Snake:
             or self.position[1] >= self.SCREEN_HEIGHT
             or self.position[1] < 0):
             self.game_over = True
-            print("Game over: Screen border")
+            # print("Game over: Screen border")
 
         # Check self collisions
         for segment in self.snake_list[:-1]:  # Exclude head from check
             if np.array_equal(segment, self.position):
                 self.game_over = True
-                print("Game over: Own body crash")
+                # print("Game over: Own body crash")
 
     def update_snake_list(self):
         """! Update the list of snake body segments.

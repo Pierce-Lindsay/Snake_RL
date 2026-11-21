@@ -9,5 +9,5 @@
 #SBATCH --mem 16G
 #SBATCH --job-name="P3"
 
-source activate myenv
-python cnn.py
+source activate snake
+python main.py --test
