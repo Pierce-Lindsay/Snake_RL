@@ -11,7 +11,7 @@ import torch
 import torch.nn.functional as F
 import torch.optim as optim
 # from torch.utils.tensorboard import SummaryWriter
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import copy
 
 from train import SnakeAI
@@ -53,15 +53,15 @@ class Agent_DQN(SnakeAI):
         self.target.eval()
         self.learn_steps = 0
         self.update_freq = 5000
-        self.truncated_step = 10000
+        self.truncated_step = 1000
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         # self.writer = SummaryWriter("runs/10k/")
         
-        if args.test_dqn:
-            #you can load your model here
-            print('loading trained model')
-            self.model.load_state_dict(torch.load("model.pth",map_location = self.device))
-            self.model.eval()
+        # if args.test_dqn:
+        #     #you can load your model here
+        #     print('loading trained model')
+        #     self.model.load_state_dict(torch.load("model.pth",map_location = self.device))
+        #     self.model.eval()
 
     def init_game_setting(self):
         """
@@ -110,22 +110,21 @@ class Agent_DQN(SnakeAI):
         return random.sample(self.r_buffer, self.batch_size)
     
     def make_plots(self,total_rewards, epsilon_values):
-        pass
-        # episodes = np.arange(1, len(total_rewards)+1)
-        # fig, ax1 = plt.subplots(figsize=(12,6))
+        episodes = np.arange(1, len(total_rewards)+1)
+        fig, ax1 = plt.subplots(figsize=(12,6))
 
-        # ax1.plot(episodes,total_rewards, color="b",label="Rolling Average Reward(last 30)")
-        # ax1.set_xlabel("Training Episode")
-        # ax1.set_ylabel("Rolling Average Reward(last 30)")
+        ax1.plot(episodes,total_rewards, color="b",label="Rolling Average Reward(last 30)")
+        ax1.set_xlabel("Training Episode")
+        ax1.set_ylabel("Rolling Average Reward(last 30)")
 
-        # ax2 = ax1.twinx()
-        # ax2.plot(episodes, epsilon_values, color="r", label = "Epsilon")
-        # ax2.set_ylabel("Epsilon")
-        # ax2.set_ylim(0,1.05)
+        ax2 = ax1.twinx()
+        ax2.plot(episodes, epsilon_values, color="r", label = "Epsilon")
+        ax2.set_ylabel("Epsilon")
+        ax2.set_ylim(0,1.05)
 
-        # plt.title("Training")
-        # fig.tight_layout()
-        # fig.savefig("Reward.png")
+        plt.title("Training")
+        fig.tight_layout()
+        fig.savefig("Reward.png")
 
 
     def train(self):
@@ -148,9 +147,12 @@ class Agent_DQN(SnakeAI):
                 self._apply_action(action)
                 self.process()
                 reward = self._calculate_reward()
-                next_state=self.make_board()
                 terminated = self.game_over
                 truncated = (steps >= self.truncated_step)
+                if terminated or truncated:
+                    next_state = np.zeros_like(state)
+                else:
+                    next_state=self.make_board()
                 self.push(state, action, reward, next_state, terminated, truncated)
                 total_reward += reward
                 if len(self.r_buffer) >= self.batch_size:
