@@ -32,7 +32,7 @@ class Snake:
     SNAKE_BLOCK = 10     #!< Size of each snake/food block in pixels
     SNAKE_SPEED = 15     #!< Game update frequency (moves per second)
 
-    def __init__(self):
+    def __init__(self, numbered_fruits=False, fruit_count=5):
         """! Initialize a new Snake game instance.
         
         Sets up the initial game state with:
@@ -44,6 +44,7 @@ class Snake:
         # Game state flags
         self.game_over = False  #!< Tracks if game has ended due to collision
         self.is_eating = False  #!< Tracks if snake is currently eating food
+        self.game_started = False
         
         # Snake properties
         self.snake_list = []    #!< List of coordinates for each snake segment
@@ -56,7 +57,9 @@ class Snake:
         ])  #!< Current position of snake head
         self.displacement = np.zeros(2,)  #!< Current movement vector
         
-        # Initialize the numbered fruits
+        self._validate_fruit_count(fruit_count)
+        self.numbered_fruits = numbered_fruits
+        self.fruit_count = fruit_count
         self.create_food()
 
     def update_snake_position(self):
@@ -92,11 +95,12 @@ class Snake:
                 self.game_over = True
                 print("Game over: Own body crash")
 
-        for fruit_position in self.fruit_positions[1:]:
-            if np.array_equal(self.position, fruit_position):
-                self.game_over = True
-                print("Game over: Hit a fruit numbered 2-5")
-                break
+        if self.numbered_fruits:
+            for fruit_position in self.fruit_positions[1:]:
+                if np.array_equal(self.position, fruit_position):
+                    self.game_over = True
+                    print("Game over: Hit a fruit numbered above 1")
+                    break
 
     def update_snake_list(self):
         """! Update the list of snake body segments.
@@ -112,15 +116,25 @@ class Snake:
             del self.snake_list[0]
 
     def create_food(self):
-        """! Generate five numbered fruits at random, unoccupied positions.
+        """! Generate classic food or the selected number of numbered fruits.
         
         Places food randomly on screen with constraints:
         - Aligns to SNAKE_BLOCK grid
         - Keeps full blocks within screen boundaries
         - Avoids the snake and other fruits
         """
+        if not self.numbered_fruits:
+            self.food_position = np.array((
+                round(random.randrange(
+                    0, self.SCREEN_WIDTH - self.SNAKE_BLOCK) / 10.0) * 10.0,
+                round(random.randrange(
+                    0, self.SCREEN_HEIGHT - self.SNAKE_BLOCK) / 10.0) * 10.0
+            ))
+            self.fruit_positions = [self.food_position]
+            return
+
         self.fruit_positions = []
-        for _ in range(5):
+        for _ in range(self.fruit_count):
             position = self._random_empty_position()
             if position is None:
                 self.game_over = True
@@ -128,6 +142,29 @@ class Snake:
             self.fruit_positions.append(position)
 
         self.food_position = self.fruit_positions[0] if self.fruit_positions else None
+
+    @staticmethod
+    def _validate_fruit_count(fruit_count):
+        if fruit_count not in (3, 4, 5):
+            raise ValueError("fruit_count must be 3, 4, or 5")
+
+    def set_numbered_fruits(self, enabled, fruit_count=None):
+        """! Set numbered-fruit mode and optionally select its fruit count."""
+        if fruit_count is not None:
+            self._validate_fruit_count(fruit_count)
+        if self.game_started:
+            return
+        if fruit_count is not None:
+            self.fruit_count = fruit_count
+        self.numbered_fruits = bool(enabled)
+        self.create_food()
+
+    def toggle_numbered_fruits(self):
+        """! Toggle numbered-fruit mode and return the new state."""
+        if self.game_started:
+            return self.numbered_fruits
+        self.set_numbered_fruits(not self.numbered_fruits)
+        return self.numbered_fruits
 
     def _random_empty_position(self):
         """! Return a random grid position not occupied by the snake or a fruit."""
@@ -154,7 +191,7 @@ class Snake:
         Performs these operations:
         1. Checks if snake head overlaps with fruit 1
         2. Increases snake length if fruit 1 is eaten
-        3. Shifts fruits 2-5 down and generates a new fruit 5
+        3. Shifts remaining fruits down and generates a new fruit at the selected count
         4. Updates is_eating flag for reward calculation
         """
         if self.game_over:
@@ -164,14 +201,17 @@ class Snake:
         self.is_eating = np.array_equal(self.position, self.food_position)
         if self.is_eating:
             self.snake_length += 1
-            self.fruit_positions = self.fruit_positions[1:]
-            new_fruit = self._random_empty_position()
-            if new_fruit is None:
-                self.game_over = True
-                print("Game over: No space for a new fruit")
+            if self.numbered_fruits:
+                self.fruit_positions = self.fruit_positions[1:]
+                new_fruit = self._random_empty_position()
+                if new_fruit is None:
+                    self.game_over = True
+                    print("Game over: No space for a new fruit")
+                else:
+                    self.fruit_positions.append(new_fruit)
+                self.food_position = self.fruit_positions[0]
             else:
-                self.fruit_positions.append(new_fruit)
-            self.food_position = self.fruit_positions[0]
+                self.create_food()
 
     def process(self):
         """! Process one complete game tick.
@@ -184,6 +224,7 @@ class Snake:
         
         This method should be called once per game tick/frame.
         """
+        self.game_started = True
         self.update_snake_position()  # Move snake head
         self.check_collisions()       # Check for game-ending conditions
         self.update_snake_list()      # Update body positions

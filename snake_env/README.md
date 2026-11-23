@@ -57,12 +57,22 @@ Controls:
 - ➡️ Right Arrow: Move Right
 - Q: Quit game
 - C: Restart after game over
+- N: Toggle numbered-fruit mode from the start screen or game-over screen
+- Enter: Start the game
 
 ### Numbered fruit mode
 
-The game displays five fruits numbered 1-5. Eating fruit 1 grows the snake,
-shifts fruits 2-5 down by one number, and places a new fruit 5 at a free grid
-position. Fruits numbered 2-5 are obstacles; touching one ends the game.
+Enable at startup with `python3 snake_game.py --numbered-fruits 3` (replace
+`3` with `4` or `5`), or toggle numbered-fruit mode from the start or
+game-over screen with N. Press 3, 4, or 5 in those screens to enable the mode
+with that many fruits. Numbered-fruit mode is off by default and cannot be
+changed while a game is active. The selected mode and count are shown in the
+window title, not inside the play area.
+
+The game displays the selected number of fruits, numbered from 1. Eating fruit
+1 grows the snake, shifts all remaining fruits down by one number, and places
+a new fruit at the end of the sequence. Fruits numbered 2 and higher are
+obstacles; touching one ends the game.
 
 ### Training an AI Agent
 

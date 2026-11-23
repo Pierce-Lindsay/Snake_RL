@@ -12,6 +12,7 @@ Snake game with score display and game over functionality.
 import pygame
 from collections import deque
 import numpy as np
+import argparse
 import snake as snake
 
 # Initialize Pygame
@@ -30,6 +31,19 @@ GREEN = (0, 255, 0)        #!< Unused but available for customization
 BLUE = (50, 153, 213)      #!< Color for background
 
 
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description="Snake Game")
+    parser.add_argument(
+        "--numbered-fruits",
+        type=int,
+        choices=(3, 4, 5),
+        default=None,
+        metavar="{3,4,5}",
+        help="Start numbered-fruit mode with this many fruits",
+    )
+    return parser.parse_args(argv)
+
+
 class SnakeGame(snake.Snake):
     """! @brief Class implementing the graphical interface for Snake game.
     
@@ -41,7 +55,7 @@ class SnakeGame(snake.Snake):
     - Game loop management
     """
 
-    def __init__(self, render=None):
+    def __init__(self, render=None, numbered_fruits=False, fruit_count=5):
         """! Initialize the graphical Snake game instance.
         
         Sets up:
@@ -52,12 +66,55 @@ class SnakeGame(snake.Snake):
         
         @param render Optional parameter for rendering configuration (unused)
         """
-        super().__init__()
+        super().__init__(
+            numbered_fruits=numbered_fruits,
+            fruit_count=fruit_count,
+        )
+        self.numbered_fruits_setting = numbered_fruits
+        self.fruit_count_setting = fruit_count
+        self.game_started = False
         self.display = pygame.display.set_mode((self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
         self.clock = pygame.time.Clock()
         self.close_window = False    #!< Flag to control game window closure
         self.key_buffer = deque()    #!< Buffer for keyboard input processing
         self.fruit_font = pygame.font.SysFont("bahnschrift", 16)
+        self.update_window_title()
+
+    def update_window_title(self):
+        """! Update the Pygame title without placing status text in the game."""
+        mode = (
+            f"Numbered Fruits ({self.fruit_count})"
+            if self.numbered_fruits else "Classic"
+        )
+        if self.game_over:
+            controls = " - N toggles / 3, 4, 5 selects count / C restarts"
+        elif not self.game_started:
+            controls = " - N toggles / 3, 4, 5 selects count / Enter starts"
+        else:
+            controls = ""
+        pygame.display.set_caption(
+            f"Snake Game - {mode} Mode{controls}"
+        )
+
+    def toggle_numbered_fruits_from_menu(self):
+        """! Toggle the mode only while the game is not active."""
+        if self.game_started:
+            return self.numbered_fruits
+
+        self.toggle_numbered_fruits()
+        self.numbered_fruits_setting = self.numbered_fruits
+        self.update_window_title()
+        return self.numbered_fruits
+
+    def select_fruit_count(self, fruit_count):
+        """! Select and enable a numbered-fruit count outside active gameplay."""
+        if self.game_started:
+            return
+
+        self.set_numbered_fruits(True, fruit_count)
+        self.numbered_fruits_setting = True
+        self.fruit_count_setting = self.fruit_count
+        self.update_window_title()
 
     def display_score(self, score):
         """! Render the current score on screen.
@@ -144,7 +201,32 @@ class SnakeGame(snake.Snake):
         - Frame rate control
         """
         while not self.close_window:
+            while not self.game_started:
+                self.handle_events()
+
+                while self.key_buffer:
+                    key = self.key_buffer.popleft()
+                    if key == pygame.K_n:
+                        self.toggle_numbered_fruits_from_menu()
+                    elif key in (pygame.K_3, pygame.K_4, pygame.K_5):
+                        self.select_fruit_count(key - pygame.K_0)
+                    elif key == pygame.K_RETURN:
+                        self.game_started = True
+                        self.update_window_title()
+                    elif key == pygame.K_q:
+                        self.close_window = True
+
+                self.display.fill(BLUE)
+                pygame.display.update()
+                self.clock.tick(self.SNAKE_SPEED)
+
+                if self.close_window:
+                    pygame.quit()
+                    quit()
+
             while self.game_over:
+                self.game_started = False
+                self.update_window_title()
                 self.display.fill(BLUE)
                 self.display_message("You Lost! Press Q-Quit or C-Play Again", RED)
                 self.display_score(self.snake_length - 1)
@@ -156,8 +238,17 @@ class SnakeGame(snake.Snake):
                             self.close_window = True
                             self.game_over = False
                         if event.key == pygame.K_c:
-                            self.__init__()
+                            self.__init__(
+                                numbered_fruits=self.numbered_fruits_setting,
+                                fruit_count=self.fruit_count_setting,
+                            )
+                            self.game_started = True
+                            self.update_window_title()
                             self.play()
+                        if event.key == pygame.K_n:
+                            self.toggle_numbered_fruits_from_menu()
+                        if event.key in (pygame.K_3, pygame.K_4, pygame.K_5):
+                            self.select_fruit_count(event.key - pygame.K_0)
 
             self.handle_events()
             self.process_key_buffer()
@@ -165,12 +256,17 @@ class SnakeGame(snake.Snake):
 
             # Render game state
             self.display.fill(BLUE)
-            for number, position in enumerate(self.fruit_positions, start=1):
+            if self.numbered_fruits:
+                fruits_to_draw = enumerate(self.fruit_positions, start=1)
+            else:
+                fruits_to_draw = [(1, self.food_position)]
+            for number, position in fruits_to_draw:
                 pygame.draw.rect(
                     self.display, RED,
                     [position[0], position[1], self.SNAKE_BLOCK, self.SNAKE_BLOCK])
-                label = self.fruit_font.render(str(number), True, WHITE)
-                self.display.blit(label, [position[0] + 1, position[1] - 2])
+                if self.numbered_fruits:
+                    label = self.fruit_font.render(str(number), True, WHITE)
+                    self.display.blit(label, [position[0] + 1, position[1] - 2])
             self.draw_snake()
             self.display_score(self.snake_length - 1)
             
@@ -182,5 +278,10 @@ class SnakeGame(snake.Snake):
 
 
 if __name__ == "__main__":
-    game = SnakeGame()
+    args = parse_args()
+
+    game = SnakeGame(
+        numbered_fruits=args.numbered_fruits is not None,
+        fruit_count=args.numbered_fruits or 5,
+    )
     game.play()
