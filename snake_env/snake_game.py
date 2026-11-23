@@ -70,14 +70,15 @@ class SnakeGame(snake.Snake):
         self.display.blit(value, [0, 0])
 
     def draw_walls(self):
-        """!Draw all active dynamic walls."""
+        """Draw all active dynamic walls."""
 
         for wall in self.walls:
-            pygame.draw.rect(
-                self.display,
-                GRAY,
-                [wall[0], wall[1], self.SNAKE_BLOCK, self.SNAKE_BLOCK]
-            )
+            for cell in wall:
+                pygame.draw.rect(
+                    self.display,
+                    GRAY,
+                    [cell[0], cell[1], self.SNAKE_BLOCK, self.SNAKE_BLOCK]
+                )
 
     def draw_snake(self):
         """! Render the snake on screen.
@@ -143,6 +144,42 @@ class SnakeGame(snake.Snake):
                 self.displacement[0] = 0
                 self.displacement[1] = self.SNAKE_BLOCK
 
+    def select_wall_count(self):
+        """Let the player select the maximum number of walls."""
+
+        while not self.close_window:
+            self.display.fill(BLUE)
+
+            title = FONT_STYLE.render("Choose Maximum Walls", True, WHITE)
+            option1 = FONT_STYLE.render("Press 1: One Wall", True, WHITE)
+            option3 = FONT_STYLE.render("Press 3: Three Walls", True, WHITE)
+            option5 = FONT_STYLE.render("Press 5: Five Walls", True, WHITE)
+
+            self.display.blit(title, (55, 60))
+            self.display.blit(option1, (85, 120))
+            self.display.blit(option3, (85, 160))
+            self.display.blit(option5, (85, 200))
+
+            pygame.display.update()
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.close_window = True
+                    return
+
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_1:
+                        self.max_walls = 1
+                        return
+                    elif event.key == pygame.K_3:
+                        self.max_walls = 3
+                        return
+                    elif event.key == pygame.K_5:
+                        self.max_walls = 5
+                        return
+
+            self.clock.tick(30)
+
     def play(self):
         """! Main game loop.
         
@@ -156,7 +193,10 @@ class SnakeGame(snake.Snake):
         while not self.close_window:
             while self.game_over:
                 self.display.fill(BLUE)
-                self.display_message("You Lost! Press Q-Quit or C-Play Again", RED)
+                if self.game_won:
+                    self.display_message("You Win! Press Q or C", GREEN)
+                else:
+                    self.display_message("You Lost! Press Q or C", RED)
                 self.display_score(self.snake_length - 1)
                 pygame.display.update()
 
@@ -166,8 +206,10 @@ class SnakeGame(snake.Snake):
                             self.close_window = True
                             self.game_over = False
                         if event.key == pygame.K_c:
+                            selected_walls = self.max_walls
                             self.__init__()
-                            self.play()
+                            self.max_walls = selected_walls
+                            return self.play()
 
             self.handle_events()
             self.process_key_buffer()
@@ -175,9 +217,17 @@ class SnakeGame(snake.Snake):
 
             # Render game state
             self.display.fill(BLUE)
-            pygame.draw.rect(self.display, RED, 
-                           [self.food_position[0], self.food_position[1], 
-                            self.SNAKE_BLOCK, self.SNAKE_BLOCK])
+            if self.food_position is not None:
+                pygame.draw.rect(
+                    self.display,
+                    RED,
+                    [
+                        self.food_position[0],
+                        self.food_position[1],
+                        self.SNAKE_BLOCK,
+                        self.SNAKE_BLOCK
+                    ]
+                )
             self.draw_walls()
             self.draw_snake()
             self.display_score(self.snake_length - 1)
@@ -191,4 +241,9 @@ class SnakeGame(snake.Snake):
 
 if __name__ == "__main__":
     game = SnakeGame()
-    game.play()
+    game.select_wall_count()
+
+    if not game.close_window:
+        game.play()
+    else:
+        pygame.quit()

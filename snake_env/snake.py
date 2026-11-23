@@ -43,6 +43,7 @@ class Snake:
         """
         # Game state flags
         self.game_over = False  #!< Tracks if game has ended due to collision
+        self.game_won = False
         self.is_eating = False  #!< Tracks if snake is currently eating food
         
         # Snake properties
@@ -50,6 +51,7 @@ class Snake:
         self.snake_length = 1   #!< Current length of the snake
         self.walls = []
         self.max_walls = 3
+        self.wall_length = 3
         
         # Position and movement
         self.position = np.array([
@@ -95,9 +97,13 @@ class Snake:
 
         # Check dynamic wall collisions
         for wall in self.walls:
-            if np.array_equal(self.position, wall):
-                self.game_over = True
-                print("Game over: Dynamic wall collision")
+            for cell in wall:
+                if np.array_equal(self.position, cell):
+                    self.game_over = True
+                    print("Game over: Dynamic wall collision")
+                    break
+
+            if self.game_over:
                 break
 
     def update_snake_list(self):
@@ -114,47 +120,76 @@ class Snake:
             del self.snake_list[0]
 
     def create_wall(self):
-        """Create a random wall and remove the oldest when needed"""
+        possible_walls = []
 
-        available_positions = []
+        # Get all occupied positions
+        occupied = (
+            self.snake_list
+            + [self.position.tolist()]
+            + [self.food_position.tolist()]
+            + [cell for wall in self.walls for cell in wall]
+        )
 
-        for x in range(0, self.SCREEN_WIDTH, self. SNAKE_BLOCK):
-            for y in range(0,self.SCREEN_HEIGHT, self.SNAKE_BLOCK):
-                position = [x,y]
+        for x in range(0, self.SCREEN_WIDTH, self.SNAKE_BLOCK):
+            for y in range(0, self.SCREEN_HEIGHT, self.SNAKE_BLOCK):
 
-                # avoid snake, food, and eixisting walls
-                if (not np.array_equal(position, self.position)
-                    and not any(np.array_equal(position, segment)
-                                for segment in self.snake_list)
-                    and not np.array_equal(position, self.food_position)
-                    and position not in self.walls):
+                for orientation in ["horizontal", "vertical"]:
 
-                    available_positions.append(position)
-        
-        # Remove oldest wall if maximum reached
+                    if orientation == "horizontal":
+                        wall = [
+                            [x + i * self.SNAKE_BLOCK, y]
+                            for i in range(self.wall_length)
+                        ]
+                    else:
+                        wall = [
+                            [x, y + i * self.SNAKE_BLOCK]
+                            for i in range(self.wall_length)
+                        ]
+
+                    # Keep walls inside screen boundaries
+                    if any(
+                        wx >= self.SCREEN_WIDTH or wy >= self.SCREEN_HEIGHT
+                        for wx, wy in wall
+                    ):
+                        continue
+
+                    # Prevent overlap with snake, food, or other walls
+                    if any(cell in occupied for cell in wall):
+                        continue
+
+                    possible_walls.append(wall)
+
+        if not possible_walls:
+            return
+
+        # Remove oldest wall when maximum is reached
         if len(self.walls) >= self.max_walls:
             self.walls.pop(0)
 
-        # Add a new wall at a random available position
-        if available_positions:
-            new_wall = random.choice(available_positions)
-            self.walls.append(new_wall)
+        # Add a randomly selected wall
+        self.walls.append(random.choice(possible_walls))
 
 
     def create_food(self):
-        """! Generate new food at random position.
-        """
+        """Generate food at a random unoccupied grid position."""
         available_positions = []
+
+        # Collect all occupied wall cells
+        wall_cells = [
+            cell
+            for wall in self.walls
+            for cell in wall
+        ]
 
         for x in range(0, self.SCREEN_WIDTH, self.SNAKE_BLOCK):
             for y in range(0, self.SCREEN_HEIGHT, self.SNAKE_BLOCK):
                 position = [x, y]
 
-                # Avoid snake head, body, and dynamic walls
+                # Avoid snake head, body, and all wall cells
                 if (not np.array_equal(position, self.position)
                     and not any(np.array_equal(position, segment)
                                 for segment in self.snake_list)
-                    and position not in self.walls):
+                    and position not in wall_cells):
 
                     available_positions.append(position)
 
@@ -163,8 +198,8 @@ class Snake:
                 random.choice(available_positions)
             )
         else:
-            # No available space remaining
             self.food_position = None
+            self.game_won = True
             self.game_over = True
 
     def eat_food(self):
